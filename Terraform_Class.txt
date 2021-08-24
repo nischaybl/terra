@@ -1,0 +1,255 @@
+Terraform Installation 
+	1. Download the Terraform Birany. (terraform.exe)
+	2. Copy the binary to any one of the path attached in PATH environment variable.
+	3. Check the installation with terraform --version
+	4. Create a IAM user with programatic access only. 
+	5. Create below environment variales to configure the provider access.
+		 export AWS_ACCESS_KEY_ID="accesskey"
+		 export AWS_SECRET_ACCESS_KEY="secretkey"
+		 export AWS_DEFAULT_REGION="us-west-2"
+	
+
+Terraform
+	- Terraform is an open source tool by HashiCorp which allows us to write infrastructure as Code (IaC) to automate provisioning of cloud infrastructure like AWS, GCP etc.
+	- Terraform is internally written GOLANG and source code is available in github.
+   
+	Advantages of using Terraform
+		- Reusable: write the code once and we can use the same code multiple times with 	  
+		            different accounts.
+		- Maintainable and Auditable: we can version control the code like in git.
+        - Sharable: Terraform provides some options by which a team can work on same code easily.
+		- Repeatable: we can run the same code again and again to get the same results. 	
+		- Testable: we have dry run option called plan by which we can predict/test the configuration before actually applying the code to infrastructure.
+		
+Terraform Code/Configuration/scripts
+	- It is written in HCL - HashiCorp Language and the filetype is .tf 
+
+Provider
+	- It is a mandatory block in our terraform project and can be used only once in a project.
+	- Providers like aws which is used to work with aws infrastructure resources.
+		
+			provider "aws" {
+				region = "us-east-1"
+			}
+	
+Terraform Registry 
+	- It is a reporitory of modules written by terraform community based on the providers 	
+	url: registry.terraform.io
+	
+How to avoid terraform from auto update	
+	terraform {
+		required_version = ">=0.12"
+	}
+How to avoid provider plugin from auto update	
+	required_providers {
+    aws = {
+      version = "= 3.55.0"
+      source = "hashicorp/aws"
+    }
+
+	Combined to gether in terraform.tf file 
+		terraform {
+			required_version = ">=0.12"
+			
+			required_providers {
+			aws = {
+			  version = "= 3.55.0"
+			  source = "hashicorp/aws"
+			}
+		  }	
+		}
+	
+Execution process 
+	1) terraform init 
+	     - used to initialize the working directory containing terraform code as terraform project. 
+             - terraform will automatically downloads the required files and binaries to execute the code based on the provider configuration.		
+		
+		init operation:
+			1) Initialization of the backend 
+			2) Initialization of Provider plugins 
+			3) Initialization of child modules
+
+	2) Terraform plan 
+		- Is used to create an execution plan (as dry run prediction) for what will be   configured on the actual cloud infrastructure. 
+		- Terraform performs auto refresh of plan on every run unless it is explicitly disabled. 
+        - Terraform will automatically scans all the .tf files in the current directory.
+		- Plan will always compare the json data from state file with the actual cloud resources.
+		To save the plan in a separete file and if I want to use this plan to apply 
+			terraform plan -out my-plan.out
+	
+	3) Terraform apply 
+		- Is used to apply the planned changes to actual cloud infrastructure.
+		- We can run aplly n number times the result will be same as terraform internally maintains a state where it will always compare the desired state with current state in the cloud.
+		
+		Apply the current configure in a directory 
+			terraform apply 
+			
+		Apply with auto approve 
+			terraform apply --auto-approve
+		
+		Apply with saved plan 
+			terraform apply my-plan.out
+			
+	4) 	Terraform Destroy
+		- Is used to delete the resources that are managed by terraform scritps.
+		- we can also create a destroy plan - terraform plan destroy 
+		- If we want to delete particular resource out of n number of resources.
+			terraform destroy --target <resource_type>.<resource_name>
+				
+				ex. terraform destroy --target aws_instance.my_instance
+				
+	5) Terraform validate 
+		- Used to check the syntax of the all terraform scripts in the project.
+			
+Terraform Remote state (Backend)
+	If we are working in a team saving state local doesnt help to sync the configuration. Instead of having a local JSON state file named terraform.tfstate, the state file is stored in a remote place such as AWS S3, Consul, Terraform cloud etc. and all the team members will refer to this remote state called Backend.
+	
+Variable and Outputs 
+		
+	Input variables
+		- Input variables serves as parameters for our terraform scripts.
+		- Main advantage is module can be custamized without altering the terraform source code.
+		- To suppres the values in the output use sensitive = true	
+		
+			variable "instance_type" {
+				type = string
+				default = "t2.micro"
+			}
+			
+			variable "instance_type" {
+				type = number
+				default = "t2.micro"
+			}
+			
+			variable "docker_ports" {
+				type = list(object({
+					internal = number
+					external = number
+					protocol = string
+				}))
+				default = [{
+					internal = 8080
+					external = 8081
+					protocol = tcp
+				}]
+			}
+			
+	Output variables
+		- output variables are like return values of a terraform module.
+		- A child module can use output variables to feed the data to other modules such as parent module and root module.
+		- root module can use output variables to print the values to CLI after running the resources.
+		- To suppres the values in the output use sensitive = true 
+		
+	Local variables 
+		- Instead of having same value multiple time in a same terraform code we can put that value in local variable and we can use it, so that If we want to change the value we can change it once in the variable.
+		
+			locals {
+				<var_name> = "<value>"
+				<var_name1> = "<value>"
+				<var_name2> = "<value>"
+				<var_name3> = "<value>"
+				<var_name4> = "<value>"
+			}	
+	
+Taint 
+	- The terraform taint command manually marks a terraform managed resource sd tainted, means forcing the resource to be destroyed and recreated on the next apply.
+	- This command will not directly modify the infrastructure, but does modify the state file in order to mark a resource as tainted.
+		
+		To list the resources with ID from state file 
+			terraform state list
+			
+		To taint a resource 
+			terraform taint resource.id 
+			
+		To taint a resource within a module 
+			terraform taint -module=<module_name> resource.id 
+			
+		To untaint a resource 
+			terraform untaint resource.id 
+
+TERRAFORM MODULES
+	Any set of Terraform configuration files (all .tf files) in a folder is a module. 
+	
+	ROOT MODULE 
+		- The module in the current working directory is called the root module.
+		- Every Terraform configuration has at least one module, known as its root module, which consists of the resources defined in the .tf files in the main working directory. 
+	
+	CHILD MODULE 
+		- A Terraform module (usually the root module of a configuration) can call other modules to include their resources into the configuration.
+		- A module that has been called by another module is often referred to as a child module.
+		- Child modules can be called multiple times within the same configuration, and multiple configurations can use the same child module. 
+	
+	PUBLISHED MODULES 
+	   - Terraform can load modules from a public or private registry. This makes it possible to publish modules for others to use, and to use modules that others have published.
+	   - The Terraform Registry hosts a broad collection of publicly available Terraform modules for configuring many kinds of common infrastructure. These modules are free to use, and Terraform can download them automatically if you specify the appropriate source and version in a module call block.
+
+Null Resource
+ - The null_resource resource implements the standard resource lifecycle but takes no further action.
+ - The primary use-case for the null resource is as a do-nothing container for arbitrary actions taken by a provisioner.
+	Example, three EC2 instances are created and then a null_resource instance is used to gather data about all three and execute a single action that affects them all. Due to the triggers map, the null_resource will be replaced each time the instance ids change, and thus the remote-exec provisioner will be re-run.
+
+Null data resources 
+ - Tell them we are not using this instead of this we are using local values.
+	  
+Provisioners 
+	- Provisioners are used for executing scripts and some shell commands on local or remote machine as a part of resource creation or deletion.
+	- Most provisioners require access for execution which may be ssh or winRM.
+	- Provisioners are similar to "AWS EC2 user data scripts" which only run once on the creation and if it fails terraform will mark that particular resource as tainted.
+	
+	Provisioner types 
+		File: This is used to copy files and directories to the newly created resources.
+		
+		provisioner "file" {
+			source = "<src_location>"
+			destination = "<dest_location>"
+			connection {
+				type = "ssh"
+				user = "root"
+				password = "<password>"
+				host = "public_IP_address"
+			}
+		}
+	
+		local-exec: 
+		   - local-exec provisioner helps run a script on machine where we are running our terraform code. 
+				Example: 
+					resource "aws_instance" "testInstance" { 
+						ami = "${var.instance_ami}" 
+						instance_type = "${var.instance_type}" 
+						subnet_id = "${aws_subnet.subnet_public.id}" 
+						vpc_security_group_ids = ["${aws_security_group.sg_22.id}"] 
+						key_name = "${aws_key_pair.ec2key.key_name}"
+						tags { 
+								"Environment" = "${var.environment_tag}" 
+							 } 
+					provisioner "local-exec" { 
+						command = "echo ${aws_instance.testInstance.public_ip} >> public_ip.txt" 
+						} 
+					} 
+		remote-exec: 
+			- remote-exec provisioner helps invoke a script on the remote resource once it is created.
+			
+			inline - This is a list of command strings. They are executed in the order they are provided. This cannot be provided with script or scripts. • script - This is a path (relative or absolute) to a local script that will be copied to the remote resource and then executed. This cannot be provided with inline or scripts.
+			
+						resource "aws_instance" "web" { 
+							# ... 
+							provisioner "remote-exec" { 
+								inline = [ "ansible-playbook run", "consul join ${aws_instance.web.private_ip}", 
+								] 
+							}
+						}	
+						
+			scripts - This is a list of paths (relative or absolute) to local scripts that will be copied to the remote resource and then executed. They are executed in the order they are provided. This cannot be provided with inline or script. 
+			
+						resource "aws_instance" "web" { 
+							# ... 
+							provisioner "file" { 
+								source = "script.sh" destination = "/tmp/script.sh" 
+							} 
+							provisioner "remote-exec" { 
+								inline = [ "chmod +x /tmp/script.sh", "/tmp/script.sh args", ] 
+							} 
+						}	
+	
+	
+	

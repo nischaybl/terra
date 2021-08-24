@@ -1,0 +1,9 @@
+Terraform Installation 
+	1. Download the Terraform Birany. (terraform.exe)
+	2. Copy the binary to any one of the path attached in PATH environment variable.
+	3. Check the installation with terraform --version
+	4. Create a IAM user with programatic access only. 
+	5. Create below environment variales to configure the provider access.
+		 export AWS_ACCESS_KEY_ID="accesskey"
+		 export AWS_SECRET_ACCESS_KEY="secretkey"
+		 export AWS_DEFAULT_REGION="us-west-2"
